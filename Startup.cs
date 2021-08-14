@@ -1,15 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
+using blog_api.Configuration;
+using blog_api.Database;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 namespace blog_api
@@ -25,7 +32,38 @@ namespace blog_api
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
-        {
+        {   
+            //Maps the Secret to the class so that it can be read anywhere in the app
+            services.Configure<JwtConfig>(Configuration.GetSection("JwtConfig"));
+
+            services.AddDbContext<DataContext>(options=>
+                options.UseSqlite(
+                    Configuration.GetConnectionString("DefaultConnection")
+                ));
+            
+            services.AddAuthentication(options => 
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(jwt =>
+            {
+                var key = Encoding.ASCII.GetBytes(Configuration["JwtConfig:Secret"]);
+
+                //how key should be encryted
+                jwt.SaveToken = true;
+                jwt.TokenValidationParameters = new TokenValidationParameters {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    RequireExpirationTime = false,
+                };
+            });
+
+            services.AddDefaultIdentity<IdentityUser>(options=> options.SignIn.RequireConfirmedAccount = true)
+            .AddEntityFrameworkStores<DataContext>();
 
             services.AddControllers();
             services.AddSwaggerGen(c =>
@@ -47,6 +85,8 @@ namespace blog_api
             app.UseHttpsRedirection();
 
             app.UseRouting();
+
+            app.UseAuthentication();
 
             app.UseAuthorization();
 
