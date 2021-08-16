@@ -41,6 +41,21 @@ namespace blog_api
                     Configuration.GetConnectionString("DefaultConnection")
                 ));
             
+            var key = Encoding.ASCII.GetBytes(Configuration["JwtConfig:Secret"]);
+
+            var tokenValidationParams = new TokenValidationParameters {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    RequireExpirationTime = false,
+
+                    //token expires at exact time
+                    ClockSkew = new TimeSpan(0),
+                };
+            services.AddSingleton(tokenValidationParams);
+            
             services.AddAuthentication(options => 
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -48,18 +63,9 @@ namespace blog_api
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             }).AddJwtBearer(jwt =>
             {
-                var key = Encoding.ASCII.GetBytes(Configuration["JwtConfig:Secret"]);
-
                 //how key should be encryted
                 jwt.SaveToken = true;
-                jwt.TokenValidationParameters = new TokenValidationParameters {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ValidateLifetime = true,
-                    RequireExpirationTime = false,
-                };
+                jwt.TokenValidationParameters = tokenValidationParams;
             });
 
             services.AddDefaultIdentity<IdentityUser>(options=> options.SignIn.RequireConfirmedAccount = true)

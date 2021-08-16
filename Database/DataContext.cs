@@ -7,6 +7,7 @@ namespace blog_api.Database
     public class DataContext: IdentityDbContext
     {
         public virtual DbSet<Blog> Blogs {get; set;}
+        public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
         public DataContext(DbContextOptions<DataContext> options): base(options)
         {
